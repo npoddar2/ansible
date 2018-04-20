@@ -4,3 +4,5 @@
    tasks:
      - name: installing mysqlserver on database host
        apt: name=mysql-server state=present update_cache=yes
+     - name: Ensure mysql server is started
+       service: name=mysql state=started enabled=yes
