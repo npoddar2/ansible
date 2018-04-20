@@ -1,0 +1,7 @@
+---
+- hosts: loadbalancer
+  sudo: yes
+
+  tasks:
+    - name: install nginx
+      apt: name=nginx state=present update_cache=yes
