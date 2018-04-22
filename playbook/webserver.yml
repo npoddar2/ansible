@@ -23,7 +23,7 @@
 
     - name: copy apache virtual host config
       copy: src=demo/demo.conf dest=/etc/apache2/sites-available mode=0755
-      notify: restart apacha2
+      notify: restart apache2
 
     - name: setup python virtual environment
       pip: requirements=/var/www/demo/requirements.txt virtualenv=/var/www/demo/.venv
@@ -34,9 +34,10 @@
       notify: restart apache2
 
     - name: Activate Demo apache2 sites
-      file: src=/etc/apache2/sites-available/demo.conf dest=/etc/apache2/sites-enabled/demo.conf state=link    
+      file: src=/etc/apache2/sites-available/demo.conf dest=/etc/apache2/sites-enabled/demo.conf state=link
       notify: restart apache2
 
   handlers:
     - name: restart apache2
       service: name=apache2 state=restarted
+
