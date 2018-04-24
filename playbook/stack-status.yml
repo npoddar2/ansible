@@ -1,29 +1,72 @@
 ---
-  - hosts: loadbalancer
-    become: true
-    tasks:
-      - name: Check the status of nginx
-        command: service nginx status
+- hosts: loadbalancer
+  become: true
+  tasks:
+    - name: verify nginx service
+      command: service nginx status
 
-      - name: Check the Port connectivity for nginx at port 80
-        wait_for: port=80 timeout=5
+    - name: verify nginx is listening on 80
+      wait_for: port=80 timeout=1
 
+- hosts: webserver
+  become: true
+  tasks:
+    - name: verify apache2 service
+      command: service apache2 status
 
-  - hosts: webserver
-    become: true
-    tasks:
-      - name: Check the status of Apache
-        command: service apache2 status
+    - name: verify apache2 is listening on 80
+      wait_for: port=80 timeout=1
 
-      - name: Check the Port connectivity for Apache2 at port 80
-        wait_for: port=80 timeout=5
+- hosts: database
+  become: true
+  tasks:
+    - name: verify mysql service
+      command: service mysql status
 
+    - name: verify mysql is listening on 3306
+      wait_for: port=3306 timeout=1
 
-  - hosts: database
-    become: true
-    tasks:
-      - name: Check the status of mysql DB at port 3306
-        command: service mysql status 
+- hosts: control
+  tasks:
+    - name: verify end-to-end index response
+      uri: url=http://{{item}} return_content=yes
+      with_items: "{{groups.loadbalancer}}"
+      register: lb_index
 
-      - name: Check the Port connectivity for mysql 3306
-        wait_for: port=3306 timeout=5
+    - fail: msg="index failed to return content"
+      when: "'Hello, from sunny' not in item.content"
+      with_items: "{{lb_index.results}}"
+
+    - name: verify end-to-end db response
+      uri: url=http://{{item}}/db return_content=yes
+      with_items: "{{groups.loadbalancer}}"
+      register: lb_db
+
+    - fail: msg="db failed to return content"
+      when: "'Hello, from sunny' not in item.content"
+      with_items: "{{lb_db.results}}"
+      ignore_errors: true
+
+- hosts: loadbalancer
+  tasks:
+    - name: verify backend index response
+      uri: url=http://{{item}} return_content=yes
+      with_items: "{{groups.webserver}}"
+      register: app_index
+
+    - fail: msg="index failed to return content"
+      when: "'Hello, from sunny {{item.item}}!' not in item.content"
+      with_items: "{{app_index.results}}"
+      ignore_errors: true
+
+    - name: verify backend db response
+      uri: url=http://{{item}}/db return_content=yes
+      with_items: "{{groups.webserver}}"
+      register: app_db
+      ignore_errors: true
+
+    - fail: msg="db failed to return content"
+      when: "'Hello, from sunny {{item.item}}!' not in item.content"
+      with_items: "{{app_db.results}}"
+      ignore_errors: true
+
